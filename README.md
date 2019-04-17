@@ -2,8 +2,8 @@ npshmex
 =======
 
 Npshmex provides a drop-in replacement for concurrent.futures.ProcessPoolExecutor,
-which transfers numpy array input/output between processes using shared memory
-provided by the [SharedArray](https://gitlab.com/tenzing/shared-array) package.
+using shared memory provided by the [SharedArray](https://gitlab.com/tenzing/shared-array) package 
+(rather than pickle) to transfers numpy arrays between processes.
 
 Synopsis:
 ```python
@@ -24,8 +24,10 @@ The last two lines take about ~290 ms on my laptop, but ~1250 ms using
 The latter also requires about twice as much memory (based on the threshold at 
 which I get a MemoryError). 
 
-For comparison, the bare `add_one(big_data)` (without any multiprocessing) takes ~55 ms.
-Clearly the multiprocessing overhead is dominant for this simple task. 
+For this ridiculously simple task, the multiprocessing overhead is dominant even when
+spawning a single child process (a bare `add_one(big_data)` would take only ~55 ms).
+However, since part of this overhead is in the parent process, it will bottleneck 
+even more complex tasks when scaled over enough processes.
 
 How it works
 --------------
