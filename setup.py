@@ -11,7 +11,7 @@ setuptools.setup(name='npshmex',
                  url='https://github.com/JelleAalbers/npshmex',
                  description=('ProcessPoolExecutor that passes numpy'
                               'arrays through shared memory'),
-                 py_modules=['multihist'],
+                 py_modules=['npshmex'],
                  long_description=readme + '\n\n' + history,
                  long_description_content_type='text/markdown',
                  install_requires=['SharedArray'],
