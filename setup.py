@@ -7,7 +7,7 @@ requirements = open('requirements.txt').read().splitlines()
 
 setuptools.setup(name='npshmex',
                  author='Jelle Aalbers',
-                 version='0.1.0',
+                 version='0.1.1',
                  url='https://github.com/JelleAalbers/npshmex',
                  description=('ProcessPoolExecutor that passes numpy'
                               'arrays through shared memory'),

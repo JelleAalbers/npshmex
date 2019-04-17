@@ -6,7 +6,7 @@ import string
 
 import SharedArray
 
-__version__ = '0.1.0'
+__version__ = '0.1.1'
 
 
 def dtype_to_tuple(dtype):
