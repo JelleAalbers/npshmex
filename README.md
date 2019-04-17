@@ -1,9 +1,11 @@
 npshmex
 =======
 
+[![Build Status](https://travis-ci.org/JelleAalbers/npshmex.svg?branch=master)](https://travis-ci.org/JelleAalbers/npshmex)
+
 Npshmex provides a drop-in replacement for concurrent.futures.ProcessPoolExecutor,
-using shared memory provided by the [SharedArray](https://gitlab.com/tenzing/shared-array) package 
-(rather than pickle) to transfers numpy arrays between processes.
+using shared memory provided by [SharedArray](https://gitlab.com/tenzing/shared-array) 
+(rather than pickle) to transfer numpy arrays between processes.
 
 Synopsis:
 ```python
@@ -21,13 +23,13 @@ print(f.result()[0])           # 2.0
 ```
 The last two lines take about ~290 ms on my laptop, but ~1250 ms using 
 `concurrent.futures.ProcessPoolExecutor`: more than a factor four difference.
-The latter also requires about twice as much memory (based on the threshold at 
-which I get a MemoryError). 
+To run this example, npshmex claims only half as much memory as the standard library
+`ProcessPoolExecutor`, based on the threshold at which I get a MemoryError.
 
-For this ridiculously simple task, the multiprocessing overhead is dominant even when
-spawning a single child process (a bare `add_one(big_data)` would take only ~55 ms).
-However, since part of this overhead is in the parent process, it will bottleneck 
-even more complex tasks when scaled over enough processes.
+For the trivial `add_one` task, multiprocessing overhead is dominant even when
+spawning a single child process (a bare `add_one(big_data)` takes ~55 ms).
+However, since part of the multiprocessing overhead is in the parent process, 
+it will also bottleneck more complex tasks when they are scaled over enough processes.
 
 How it works
 --------------
@@ -68,6 +70,9 @@ print(x[0])     # 2.0
 The last four lines now only take ~130 ms on my laptop, which is over
 twice as fast as npshmex. However, as you can see, it involves 
 a more substantial rewrite of your code.
+
+Npshmex also supports numpy structured arrays: it transfers the content as a `np.void` array, 
+and the dtype (encoded to bytes) using a separate array.
 
 
 Clearing shared memory

@@ -8,6 +8,7 @@ requirements = open('requirements.txt').read().splitlines()
 setuptools.setup(name='npshmex',
                  author='Jelle Aalbers',
                  version='0.0.5',
+                 url='https://github.com/JelleAalbers/npshmex',
                  description=('ProcessPoolExecutor that passes numpy'
                               'arrays through shared memory'),
                  py_modules=['multihist'],
