@@ -3,7 +3,7 @@ npshmex
 
 Npshmex provides a drop-in replacement for concurrent.futures.ProcessPoolExecutor,
 which transfers numpy array input/output between processes using shared memory
-(provided by the SharedArray package).
+provided by the [SharedArray](https://gitlab.com/tenzing/shared-array) package.
 
 Synopsis:
 ```python
@@ -72,8 +72,10 @@ Clearing shared memory
 ------------------------
 
 Npshmex tells SharedArray to mark shared memory for deletion as soon as it has created
-numpy arrays back from it. As explained in the SharedArray documention, you'll keep the numpy
-array until you lose the last reference to it (as with regular python objects).
+numpy arrays back from it. As explained in the 
+[SharedArray](https://gitlab.com/tenzing/shared-array) documention, 
+you'll keep the numpy array until you lose the last reference to it 
+(as with regular python objects).
 
 If your program exits while data is being transfered between processes, 
 some shared files will remain in `/dev/shm`. You can manually clear all npshmex-associated
