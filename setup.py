@@ -12,7 +12,9 @@ setuptools.setup(name='npshmex',
                               'arrays through shared memory'),
                  py_modules=['multihist'],
                  long_description=readme + '\n\n' + history,
+                 long_description_content_type='text/markdown',
                  install_requires=['SharedArray'],
                  setup_requires=['pytest-runner'],
+
                  tests_require=requirements + ['pytest'],
                  zip_safe=False)
