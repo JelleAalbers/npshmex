@@ -8,6 +8,12 @@ import SharedArray
 
 __version__ = '0.1.2'
 
+_array_wrappers = dict()
+
+
+def register_array_wrapper(cls, attrname):
+    _array_wrappers[cls] = attrname
+
 
 def dtype_to_tuple(dtype):
     """Return list of tuples needed to construct the dtype
@@ -30,15 +36,26 @@ def dtype_to_tuple(dtype):
     return result
 
 
+def pickle_as_array(x):
+    """Pickle x and view its bytes as a numpy array"""
+    return np.frombuffer(pickle.dumps(x),
+                         dtype=np.uint8)
+
+
+def unpickle_from_array(x):
+    """Inverse of pickle_as_array"""
+    # Pickle will use the buffer protocol on x automatically
+    return pickle.loads(x)
+
+
 def pack_dtype(dtype):
     """Pack dtype into a numpy array"""
-    return np.frombuffer(pickle.dumps(dtype_to_tuple(dtype)),
-                         dtype=np.uint8)
+    return pickle_as_array(dtype_to_tuple(dtype))
 
 
 def unpack_dtype(x):
     """Unpack dtype from a numpy array"""
-    return np.dtype(pickle.loads(x))
+    return np.dtype(unpickle_from_array(x))
 
 
 def shm_clear():
@@ -49,22 +66,44 @@ def shm_clear():
             SharedArray.delete(x)
 
 
-def shm_put(arr, temp=False, _key=None):
-    """Put array into shared memory
+def is_shmable(thing):
+    """Return whether thing can be passed along through shared memory"""
+    if isinstance(thing, np.ndarray):
+        return True
+    for x in _array_wrappers:
+        if isinstance(thing, x):
+            return True
+    return False
+
+
+def shm_put(arr, temp=False, _key=None, _is_wrapper=False):
+    """Put array into shared memory and return key
 
     :param temp: If True, key will be deleted on its first retrieval by shm_pop
     (unless shm_pop is called with keep=True).
     :param _key: shared memory key to use. Do not set this yourself
     unless you know what you are doing.
     """
-    if not isinstance(arr, np.ndarray):
-        raise ValueError(f"Got {arr} ({type(arr)}) instead of a numpy array!")
+    if not is_shmable(arr):
+        raise ValueError(f"Got {arr} ({type(arr)}) instead of a numpy array "
+                         f"or registered array wrapper!")
+
+    # Deal with array-wrappers
+    for x, fieldname in _array_wrappers.items():
+        if isinstance(arr, x):
+            # Put data on shared memory
+            data = getattr(arr, fieldname)
+            datakey = shm_put(data)
+            # Replace data by the SHM key, and pickle it
+            setattr(arr, fieldname, datakey)
+            return shm_put(pickle_as_array(arr),
+                           _is_wrapper=True)
 
     is_struct = arr.dtype.names is not None
 
     if _key is None:
         _key = 'shm://npshmex_' + '_'.join([
-            "sdata" if is_struct else "data",
+            'wrapper' if _is_wrapper else ("sdata" if is_struct else "data"),
             ''.join(random.choices(string.ascii_uppercase
                                    + string.digits,
                                    k=16)),
@@ -109,6 +148,18 @@ def shm_pop(key, keep=None):
                                      keep=keep))
         result = np.frombuffer(result, dtype=dtype)
 
+    elif arrtype == 'wrapper':
+        # This was an array wrapper. Recover it, then its data
+        result = unpickle_from_array(result)
+        for x, fieldname in _array_wrappers.items():
+            if isinstance(result, x):
+                data = shm_pop(getattr(result, fieldname), keep=keep)
+                setattr(result, fieldname, data)
+                break
+        else:
+            raise RuntimeError(f"Popped weird thing from shm: {type(result)}")
+
+
     if not keep:
         shm_del(key)
     return result
@@ -125,11 +176,11 @@ def is_shmkey(key):
 def shm_wrap_f(f, *args, shm_out=True, **kwargs):
     # Get any shared memory args/kwargs
     for x in args:
-        if isinstance(x, np.ndarray):
-            raise ValueError(f"{f} got unshmd numpy arr in args!")
+        if is_shmable(x):
+            raise ValueError(f"{f} got unshmd {type(x)} in args!")
     for k, x in kwargs.items():
-        if isinstance(x, np.ndarray):
-            raise ValueError(f"{f} got unshmd numpy arr in kwargs {k}!")
+        if is_shmable(x):
+            raise ValueError(f"{f} got unshmd {type(x)} in kwargs {k}!")
 
     args = [shm_pop(x)
             if is_shmkey(x) else x
@@ -141,13 +192,14 @@ def shm_wrap_f(f, *args, shm_out=True, **kwargs):
     result = f(*args, **kwargs)
 
     if shm_out:
-        if isinstance(result, np.ndarray):
+        if is_shmable(result):
             result = shm_put(result, temp=True)
         elif isinstance(result, dict):
             for k, v in result.items():
-                if isinstance(v, np.ndarray):
+                if is_shmable(v):
                     result[k] = shm_put(v, temp=True)
     return result
+
 
 def unshm(x, keep=None):
     """Retrieve x from shared memory if it is a shared memory key
@@ -181,11 +233,10 @@ class ProcessPoolExecutor(concurrent.futures.ProcessPoolExecutor):
         """
         if shm_input:
             # Copy numpy arguments to f to temporary shared memory
-            args = [shm_put(x, temp=True)
-                    if isinstance(x, np.ndarray) else x
+            args = [shm_put(x, temp=True) if is_shmable(x) else x
                     for x in args]
             for k, v in kwargs.items():
-                if isinstance(v, np.ndarray):
+                if is_shmable(v):
                     kwargs[k] = shm_put(v, temp=True)
 
         if shm_input or shm_output:

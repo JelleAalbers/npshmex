@@ -89,3 +89,22 @@ some shared files will remain in `/dev/shm`. You can manually clear all npshmex-
 shared memory from all processes on the machine with `npshmex.shm_clear()`. 
 Otherwise, it will be up to you, your operating system, or your system administrator
 to clean up the mess...
+
+
+Array wrappers
+---------------
+You can also use npshmex for objects that wrap numpy arrays.
+For example:
+```python
+import numpy as np
+
+class Wrapper:
+    wrapped_array: np.ndarray
+    other_field = 'whatever'
+    ...
+
+from npshmex import register_array_wrapper
+register_array_wrapper(Wrapper, 'wrapped_array')
+```
+Whenever your functions take or return a Wrapper, the wrapped array will be passed through shared memory without pickling it first. 
+The rest of the wrapper will be pickled.
