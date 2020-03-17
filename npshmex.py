@@ -93,10 +93,11 @@ def shm_put(arr, temp=False, _key=None, _is_wrapper=False):
         if isinstance(arr, x):
             # Put data on shared memory
             data = getattr(arr, fieldname)
-            datakey = shm_put(data)
+            datakey = shm_put(data, temp=temp)
             # Replace data by the SHM key, and pickle it
             setattr(arr, fieldname, datakey)
             return shm_put(pickle_as_array(arr),
+                           temp=temp,
                            _is_wrapper=True)
 
     is_struct = arr.dtype.names is not None
